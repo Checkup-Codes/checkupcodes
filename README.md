@@ -1,11 +1,11 @@
-# commitcheckup
+# checkupcodes
 
 AI destekli commit mesajı oluşturucu CLI aracı. OpenAI'nin GPT-3.5 modelini kullanarak git stage'deki dosyaları analiz eder ve uygun bir commit mesajı önerir.
 
 ## Kurulum
 
 ```bash
-npm install -g commitcheckup
+npm install -g checkupcodes
 ```
 
 ## Kullanım

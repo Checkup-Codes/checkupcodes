@@ -1,5 +1,5 @@
 {
-  "name": "commitcheckup",
+  "name": "checkupcodes",
   "version": "1.0.0",
   "description": "AI-powered commit message generator using Ollama",
   "main": "dist/index.js",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Checkup-Codes/commitcheckup.git"
+    "url": "git+https://github.com/Checkup-Codes/checkupcodes.git"
   },
   "keywords": [
     "git",
@@ -27,9 +27,9 @@
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Checkup-Codes/commitcheckup/issues"
+    "url": "https://github.com/Checkup-Codes/checkupcodes/issues"
   },
-  "homepage": "https://github.com/Checkup-Codes/commitcheckup#readme",
+  "homepage": "https://github.com/Checkup-Codes/checkupcodes#readme",
   "dependencies": {
     "commander": "^11.1.0",
     "node-fetch": "^3.3.2",
