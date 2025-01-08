@@ -1,9 +1,13 @@
 {
   "name": "commitcheckup",
   "version": "1.0.0",
-  "description": "",
+  "description": "AI-powered commit message generator using Ollama",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "checkup": "./dist/index.js"
+  },
   "scripts": {
     "build": "rimraf dist && tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -13,14 +17,24 @@
     "type": "git",
     "url": "git+https://github.com/Checkup-Codes/commitcheckup.git"
   },
-  "keywords": [],
+  "keywords": [
+    "git",
+    "commit",
+    "ai",
+    "ollama",
+    "cli"
+  ],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Checkup-Codes/commitcheckup/issues"
   },
   "homepage": "https://github.com/Checkup-Codes/commitcheckup#readme",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "node-fetch": "^3.3.2",
+    "simple-git": "^3.20.0"
+  },
   "devDependencies": {
     "@types/node": "^20.8.7",
     "rimraf": "^5.0.5",
