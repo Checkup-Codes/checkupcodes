@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import { getStagedFiles, createCommit } from './git.js';
 import { generateCommitMessage } from './ai.js';
+import * as readline from 'readline';
 
 const program = new Command();
 
@@ -45,7 +46,36 @@ program
       });
 
       if (shouldProceed !== false) {
-        const selectedMessage = commitMessage.messages[shouldProceed - 1];
+        let selectedMessage = commitMessage.messages[shouldProceed - 1];
+        
+        // Show edit option
+        console.log('\nSelected commit message:');
+        console.log(selectedMessage);
+        
+        const shouldEdit = await new Promise<boolean>((resolve) => {
+          process.stdout.write('\nDo you want to edit this message? (y/N): ');
+          process.stdin.once('data', (data) => {
+            resolve(data.toString().trim().toLowerCase() === 'y');
+          });
+        });
+
+        if (shouldEdit) {
+          const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+          });
+
+          process.stdout.write('\nEdit commit message\n');
+          process.stdout.write('Current message: ' + selectedMessage + '\n');
+          
+          selectedMessage = await new Promise<string>((resolve) => {
+            rl.question('New message: ', (answer) => {
+              rl.close();
+              resolve(answer || selectedMessage); // Use original if empty
+            });
+          });
+        }
+
         await createCommit(selectedMessage);
         console.log('Commit created successfully!');
         process.exit(0);
