@@ -1,31 +1,24 @@
 import simpleGit from 'simple-git';
 import { GitStatus } from './types.js';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const git = simpleGit();
 
-export async function getStagedFiles(): Promise<GitStatus> {
+export async function getGitStatus(): Promise<GitStatus> {
   const status = await git.status();
-  const staged = status.staged;
   const files: { [key: string]: string } = {};
 
-  for (const file of staged) {
-    try {
-      const content = fs.readFileSync(path.resolve(process.cwd(), file), 'utf-8');
-      files[file] = content;
-    } catch (error) {
-      console.warn(`Could not read file: ${file}`);
-    }
+  // Get diff for staged files
+  for (const file of status.staged) {
+    const diff = await git.diff(['--cached', file]);
+    files[file] = diff;
   }
 
   return {
-    staged,
-    files
+    files,
+    staged: status.staged,
+    modified: status.modified,
+    created: status.created,
+    deleted: status.deleted
   };
 }
 

@@ -1,6 +1,9 @@
 export interface GitStatus {
-  staged: string[];
   files: { [key: string]: string };
+  staged: string[];
+  modified: string[];
+  created: string[];
+  deleted: string[];
 }
 
 export interface CommitMessage {

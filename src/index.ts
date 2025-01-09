@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { getStagedFiles, createCommit } from './git.js';
 import { generateCommitMessage } from './ai.js';
+import { showConfig, setModel } from './commands.js';
+import { getGitStatus, createCommit } from './git.js';
 import * as readline from 'readline';
 
 const program = new Command();
@@ -14,10 +15,11 @@ program
 
 program
   .command('commit')
-  .description('Generate commit message for staged files')
-  .action(async () => {
+  .description('Generate and apply commit message for staged files')
+  .option('-m, --model <name>', 'specify AI model to use')
+  .action(async (options) => {
     try {
-      const status = await getStagedFiles();
+      const status = await getGitStatus();
       
       if (status.staged.length === 0) {
         console.error('No staged files found. Please stage some files first using `git add`');
@@ -25,7 +27,7 @@ program
       }
 
       console.log('Analyzing staged files...\n');
-      const commitMessage = await generateCommitMessage(status);
+      const commitMessage = await generateCommitMessage(status, options.model);
       
       // Display commit message options
       console.log('\nPlease choose a commit message by entering its number (1-3):');
@@ -85,9 +87,47 @@ program
         process.exit(0);
       }
     } catch (error) {
-      console.error('Error:', error instanceof Error ? error.message : 'An unknown error occurred');
+      if (error instanceof Error) {
+        console.error(error.message);
+      }
       process.exit(1);
     }
+  });
+
+program
+  .command('generate')
+  .description('Generate commit messages for staged changes')
+  .option('-m, --model <name>', 'specify AI model to use')
+  .action(async (options) => {
+    try {
+      const status = await getGitStatus();
+      const result = await generateCommitMessage(status, options.model);
+      
+      console.log('\nGenerated commit messages:');
+      result.messages.forEach((msg, i) => {
+        console.log(`${i + 1}) ${msg}`);
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(error.message);
+      }
+      process.exit(1);
+    }
+  });
+
+program
+  .command('config')
+  .description('Show current AI configuration')
+  .action(() => {
+    showConfig();
+  });
+
+program
+  .command('set-model')
+  .description('Set default AI model')
+  .argument('<model>', 'model name to set as default')
+  .action((model) => {
+    setModel(model);
   });
 
 program.parse(); 
