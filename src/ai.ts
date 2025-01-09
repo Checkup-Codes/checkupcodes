@@ -11,7 +11,7 @@ export async function generateCommitMessage(status: GitStatus): Promise<CommitMe
       .map(([file, content]) => `File: ${file}\nContent: ${content.substring(0, 500)}...`)
       .join('\n\n');
 
-    const prompt = `Based on the following staged files, generate a concise and descriptive commit message following Semantic Commit Messages format. Use one of these types:
+    const prompt = `Based on the following staged files, generate THREE different commit messages following Semantic Commit Messages format. Use one of these types:
 
 feat: A new feature
 fix: A bug fix
@@ -37,7 +37,9 @@ Example good commit messages:
 Staged files:
 ${filesInfo}
 
-Generate a semantic commit message that precisely describes the changes in a professional way. The message should be clear and follow the exact format above.`;
+Generate THREE different semantic commit messages that precisely describe the changes in a professional way. The messages should be clear and follow the exact format above.
+Number each message with 1), 2), and 3).
+Make each message unique and focus on different aspects of the changes.`;
 
     console.log('Sending request to Ollama...');
     const response = await fetch(OLLAMA_API_URL, {
@@ -71,8 +73,6 @@ Generate a semantic commit message that precisely describes the changes in a pro
       throw new Error('No response body received');
     }
 
-    process.stdout.write('Generated commit message: ');
-    
     let fullMessage = '';
     for await (const chunk of response.body) {
       const text = Buffer.isBuffer(chunk) ? chunk.toString('utf-8') : String(chunk);
@@ -82,18 +82,32 @@ Generate a semantic commit message that precisely describes the changes in a pro
           const json = JSON.parse(line);
           if (json.response) {
             fullMessage += json.response;
-            process.stdout.write(json.response);
           }
         } catch (e) {
           // Ignore parsing errors for incomplete chunks
         }
       }
     }
-    
-    process.stdout.write('\n');
+
+    // Parse the numbered messages
+    const messages = fullMessage
+      .split(/\d\)/)
+      .map(msg => msg.trim())
+      .filter(msg => msg.length > 0)
+      .map(msg => msg.replace(/^\s*[-:]\s*/, '').trim());
+
+    // If no valid messages were generated, provide a default one
+    if (messages.length === 0) {
+      messages.push("chore: update files");
+    }
+
+    // Ensure we have exactly 3 messages
+    while (messages.length < 3) {
+      messages.push(messages[0]); // Duplicate the first message if we don't have enough
+    }
 
     return {
-      message: fullMessage.trim() || "chore: update files"
+      messages: messages.slice(0, 3) // Return exactly 3 messages
     };
   } catch (error) {
     if (error instanceof Error) {

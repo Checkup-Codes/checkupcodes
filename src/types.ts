@@ -4,5 +4,5 @@ export interface GitStatus {
 }
 
 export interface CommitMessage {
-  message: string;
+  messages: string[];
 } 

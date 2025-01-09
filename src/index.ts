@@ -26,18 +26,32 @@ program
       console.log('Analyzing staged files...\n');
       const commitMessage = await generateCommitMessage(status);
       
-      const shouldProceed = await new Promise<boolean>((resolve) => {
-        process.stdout.write('\nDo you want to create this commit? (y/N): ');
+      // Display commit message options
+      console.log('\nPlease choose a commit message by entering its number (1-3):');
+      commitMessage.messages.forEach((msg, index) => {
+        console.log(`${index + 1}) ${msg}`);
+      });
+
+      const shouldProceed = await new Promise<number | false>((resolve) => {
+        process.stdout.write('\nEnter your choice (1-3) or any other key to cancel: ');
         process.stdin.once('data', (data) => {
-          resolve(data.toString().trim().toLowerCase() === 'y');
+          const choice = parseInt(data.toString().trim());
+          if (choice >= 1 && choice <= 3) {
+            resolve(choice);
+          } else {
+            resolve(false);
+          }
         });
       });
 
-      if (shouldProceed) {
-        await createCommit(commitMessage.message);
+      if (shouldProceed !== false) {
+        const selectedMessage = commitMessage.messages[shouldProceed - 1];
+        await createCommit(selectedMessage);
         console.log('Commit created successfully!');
+        process.exit(0);
       } else {
         console.log('Commit cancelled.');
+        process.exit(0);
       }
     } catch (error) {
       console.error('Error:', error instanceof Error ? error.message : 'An unknown error occurred');
