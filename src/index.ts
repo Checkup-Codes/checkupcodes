@@ -67,6 +67,7 @@ program
 
           process.stdout.write('\nEdit commit message\n');
           process.stdout.write('Current message: ' + selectedMessage + '\n');
+          process.stdout.write('(Enter your new message or press Enter to keep the current message)\n');
           
           selectedMessage = await new Promise<string>((resolve) => {
             rl.question('New message: ', (answer) => {
