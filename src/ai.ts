@@ -11,12 +11,33 @@ export async function generateCommitMessage(status: GitStatus): Promise<CommitMe
       .map(([file, content]) => `File: ${file}\nContent: ${content.substring(0, 500)}...`)
       .join('\n\n');
 
-    const prompt = `Based on the following staged files, generate a concise and descriptive commit message following conventional commits format (e.g., feat:, fix:, docs:, etc.).
+    const prompt = `Based on the following staged files, generate a concise and descriptive commit message following Semantic Commit Messages format. Use one of these types:
+
+feat: A new feature
+fix: A bug fix
+docs: Documentation only changes
+style: Changes that do not affect the meaning of the code (white-space, formatting, etc)
+refactor: A code change that neither fixes a bug nor adds a feature
+perf: A code change that improves performance
+test: Adding missing tests or correcting existing tests
+chore: Changes to the build process or auxiliary tools
     
+Format should be: <type>(<optional scope>): <description>
+
+Example good commit messages:
+- feat(auth): add login with Google OAuth
+- fix(api): handle null response from user service
+- docs: update installation guide
+- style: format code according to new eslint rules
+- refactor(db): simplify query builder logic
+- perf(images): optimize image loading
+- test(auth): add unit tests for login flow
+- chore: update dependencies
+
 Staged files:
 ${filesInfo}
 
-Generate a commit message that describes the changes in a clear and professional way.`;
+Generate a semantic commit message that precisely describes the changes in a professional way. The message should be clear and follow the exact format above.`;
 
     console.log('Sending request to Ollama...');
     const response = await fetch(OLLAMA_API_URL, {
