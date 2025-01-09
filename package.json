@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "checkup": "./dist/index.js"
+    "checkupcodes": "./dist/index.js",
+    "cc": "./dist/index.js"
   },
   "scripts": {
     "build": "rimraf dist && tsc",

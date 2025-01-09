@@ -7,12 +7,12 @@ import { generateCommitMessage } from './ai.js';
 const program = new Command();
 
 program
-  .name('checkup')
+  .name('checkupcodes')
   .description('AI-powered commit message generator')
   .version('1.0.0');
 
 program
-  .command('codes')
+  .command('commit')
   .description('Generate commit message for staged files')
   .action(async () => {
     try {
