@@ -1,11 +1,86 @@
 import { GitStatus, CommitMessage } from './types.js';
+import { getModelConfig, ModelConfig } from './config.js';
 import fetch from 'node-fetch';
 
-const OLLAMA_API_URL = 'http://127.0.0.1:11434/api/generate';
+interface OpenAIResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
 
-export async function generateCommitMessage(status: GitStatus): Promise<CommitMessage> {
+async function generateWithOllama(prompt: string, modelConfig: ModelConfig): Promise<string> {
+  const response = await fetch(modelConfig.apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: modelConfig.name,
+      prompt: prompt,
+      stream: true,
+      options: {
+        temperature: modelConfig.temperature,
+        top_p: modelConfig.topP
+      }
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  let fullMessage = '';
+  for await (const chunk of response.body) {
+    const text = Buffer.isBuffer(chunk) ? chunk.toString('utf-8') : String(chunk);
+    const lines = text.split('\n').filter(Boolean);
+    for (const line of lines) {
+      try {
+        const json = JSON.parse(line);
+        if (json.response) {
+          fullMessage += json.response;
+        }
+      } catch (e) {
+        // Ignore parsing errors for incomplete chunks
+      }
+    }
+  }
+  return fullMessage;
+}
+
+async function generateWithOpenAI(prompt: string, modelConfig: ModelConfig): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OpenAI API key not found in environment variables');
+  }
+
+  const response = await fetch(modelConfig.apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: modelConfig.temperature,
+      top_p: modelConfig.topP,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI API error! status: ${response.status}`);
+  }
+
+  const data = await response.json() as OpenAIResponse;
+  return data.choices[0].message.content;
+}
+
+export async function generateCommitMessage(status: GitStatus, modelName?: string): Promise<CommitMessage> {
   try {
-    console.log('Connecting to Ollama API...');
+    const modelConfig = getModelConfig(modelName);
+    console.log(`Connecting to ${modelConfig.name} API...`);
     
     const filesInfo = Object.entries(status.files)
       .map(([file, content]) => {
@@ -55,62 +130,19 @@ Format your response as:
 2) type: description
 3) type: description`;
 
-    console.log('Sending request to Ollama...');
-    const response = await fetch(OLLAMA_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'mistral',
-        prompt: prompt,
-        stream: true,
-        options: {
-          temperature: 0.7,
-          top_p: 0.9
-        }
-      }),
-    }).catch(error => {
-      console.error('Network error details:', error);
-      throw error;
-    });
-
-    console.log('Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Error response:', errorText);
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    if (!response.body) {
-      throw new Error('No response body received');
-    }
-
-    let fullMessage = '';
-    for await (const chunk of response.body) {
-      const text = Buffer.isBuffer(chunk) ? chunk.toString('utf-8') : String(chunk);
-      const lines = text.split('\n').filter(Boolean);
-      for (const line of lines) {
-        try {
-          const json = JSON.parse(line);
-          if (json.response) {
-            fullMessage += json.response;
-          }
-        } catch (e) {
-          // Ignore parsing errors for incomplete chunks
-        }
-      }
+    console.log(`Sending request to ${modelConfig.name}...`);
+    
+    let fullMessage: string;
+    if (modelConfig.name === 'openai') {
+      fullMessage = await generateWithOpenAI(prompt, modelConfig);
+    } else {
+      fullMessage = await generateWithOllama(prompt, modelConfig);
     }
 
     // Helper function to format a message
     const formatMessage = (msg: string, defaultType: string = 'chore'): string => {
       msg = msg.replace(/^\s*[-:]\s*/, '').trim();
-      
-      // Remove any backticks
       msg = msg.replace(/`/g, '');
-      
-      // Remove any nested semantic types
       msg = msg.replace(/^.*?:\s*['"]?(feat|fix|docs|style|refactor|perf|test|chore):\s*/i, '');
       
       const semanticPattern = /^(feat|fix|docs|style|refactor|perf|test|chore)(\([^)]+\))?: .+$/;
@@ -118,40 +150,31 @@ Format your response as:
         return msg;
       }
 
-      // If not in correct format, try to extract type and description
       const words = msg.split(/\s+/);
       const type = words[0]?.toLowerCase();
       const description = words.slice(1).join(' ');
       
-      // If we can identify a valid type, format it correctly
       if (['feat', 'fix', 'docs', 'style', 'refactor', 'perf', 'test', 'chore'].includes(type)) {
         return `${type}: ${description}`;
       }
       
-      // Clean up any remaining semantic prefixes in the description
       const cleanDescription = description.replace(/(feat|fix|docs|style|refactor|perf|test|chore):\s*/g, '');
-      
-      // Use the default type with cleaned description
       return `${defaultType}: ${cleanDescription || msg}`;
     };
 
-    // Parse the numbered messages
     let messages: string[] = fullMessage
       .split(/\d\)/)
       .map(msg => msg.trim())
       .filter(msg => msg.length > 0)
       .map(msg => formatMessage(msg));
 
-    // If no valid messages were generated, provide a default one
     if (messages.length === 0) {
       messages.push("chore: update files");
     }
 
-    // Get the type from the first message
     const typeMatch = messages[0].match(/^([^(:]+)/);
     const firstType = typeMatch ? typeMatch[1] : 'chore';
 
-    // Ensure all messages use the same type and we have exactly 3
     messages = messages
       .map(msg => {
         const content = msg.replace(/^[^:]+:\s*/, '');
@@ -159,7 +182,6 @@ Format your response as:
       })
       .slice(0, 3);
 
-    // If we have fewer than 3 messages, duplicate the first one
     while (messages.length < 3) {
       messages.push(messages[0] || `${firstType}: update files`);
     }
@@ -169,12 +191,14 @@ Format your response as:
     if (error instanceof Error) {
       console.error('Full error details:', error);
       if (error.message.includes('ECONNREFUSED')) {
-        console.error('\nError: Could not connect to Ollama. Please make sure Ollama is running on http://127.0.0.1:11434');
-        console.error('Install Ollama from: https://ollama.ai');
-        console.error('\nTry these steps:');
-        console.error('1. Open a new terminal');
-        console.error('2. Run: ollama serve');
-        console.error('3. Keep that terminal open and try this command again');
+        console.error('\nError: Could not connect to AI service. Please check your configuration and ensure the service is running.');
+        if (error.message.includes('11434')) {
+          console.error('For Ollama models:');
+          console.error('1. Install Ollama from: https://ollama.ai');
+          console.error('2. Open a new terminal');
+          console.error('3. Run: ollama serve');
+          console.error('4. Keep that terminal open and try this command again');
+        }
       } else {
         console.error('\nError generating commit message:', error.message);
       }
