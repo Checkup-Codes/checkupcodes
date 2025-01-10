@@ -84,17 +84,24 @@ export async function generateCommitMessage(status: GitStatus, modelName?: strin
     
     const filesInfo = Object.entries(status.files)
       .map(([file, content]) => {
-        const lines = content.split('\n');
-        const addedLines = lines
-          .filter(line => line.startsWith('+'))
+        const diffLines = content.diff.split('\n');
+        const removedLines = diffLines
+          .filter(line => line.startsWith('-'))
           .map(line => line.substring(1))
           .join('\n');
-        const removedLines = lines
-          .filter(line => line.startsWith('-'))
+        const addedLines = diffLines
+          .filter(line => line.startsWith('+'))
           .map(line => line.substring(1))
           .join('\n');
         
         return `File: ${file}
+Previous version (HEAD):
+${content.oldContent || 'New file'}
+
+Current version (Staged):
+${content.newContent}
+
+Changes:
 ${removedLines ? `Lines Removed:\n${removedLines}` : 'No lines removed'}
 ${addedLines ? `\nLines Added:\n${addedLines}` : '\nNo lines added'}`;
       })
@@ -144,7 +151,7 @@ Format your response as:
       msg = msg.replace(/^\s*[-:]\s*/, '').trim();
       msg = msg.replace(/`/g, '');
       msg = msg.replace(/^.*?:\s*['"]?(feat|fix|docs|style|refactor|perf|test|chore):\s*/i, '');
-      
+
       const semanticPattern = /^(feat|fix|docs|style|refactor|perf|test|chore)(\([^)]+\))?: .+$/;
       if (semanticPattern.test(msg)) {
         return msg;
@@ -153,11 +160,11 @@ Format your response as:
       const words = msg.split(/\s+/);
       const type = words[0]?.toLowerCase();
       const description = words.slice(1).join(' ');
-      
+
       if (['feat', 'fix', 'docs', 'style', 'refactor', 'perf', 'test', 'chore'].includes(type)) {
         return `${type}: ${description}`;
       }
-      
+
       const cleanDescription = description.replace(/(feat|fix|docs|style|refactor|perf|test|chore):\s*/g, '');
       return `${defaultType}: ${cleanDescription || msg}`;
     };

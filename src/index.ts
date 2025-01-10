@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { generateCommitMessage } from './ai.js';
 import { showConfig, setModel } from './commands.js';
 import { getGitStatus, createCommit } from './git.js';
+import { logCommitToFile } from './logger.js';
 import * as readline from 'readline';
 
 const program = new Command();
@@ -49,6 +50,7 @@ program
 
       if (shouldProceed !== false) {
         let selectedMessage = commitMessage.messages[shouldProceed - 1];
+        await logCommitToFile(selectedMessage);
         
         // Show edit option
         console.log('\nSelected commit message:');
