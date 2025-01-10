@@ -116,3 +116,20 @@ This project is licensed under the ISC License.
 ## Support
 
 If you encounter any issues or have questions, please file an issue at [GitHub Issues](https://github.com/Checkup-Codes/checkupcodes/issues). 
+
+## Version History
+
+### v0.0.3
+- ✨ Enhanced commit analysis with detailed file comparison
+  - Added complete diff view between staged and HEAD versions
+  - Added full file content comparison for better context
+  - Improved AI prompt with detailed file changes
+- 📝 Added automatic commit logging to `checkupcodes.txt`
+  - Logs selected commit messages before any edits
+  - File is automatically ignored by git
+
+### v0.0.2
+- 🚀 Initial public release
+- 🤖 Basic AI-powered commit message generation
+- 📝 Support for Mistral and Deepseek models
+- ⚡ Interactive commit selection and editing 
