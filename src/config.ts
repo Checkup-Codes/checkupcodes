@@ -23,20 +23,14 @@ const DEFAULT_CONFIG: AIConfig = {
   defaultModel: 'mistral',
   models: {
     mistral: {
-      name: 'mistral',
-      apiUrl: 'http://127.0.0.1:11434/api/generate',
-      temperature: 0.7,
-      topP: 0.9
-    },
-    deepseek: {
-      name: 'deepseek',
+      name: 'mistral:latest',
       apiUrl: 'http://127.0.0.1:11434/api/generate',
       temperature: 0.7,
       topP: 0.9
     },
     'deepseek-coder': {
-      name: 'deepseek-coder-v2',
-      apiUrl: 'http://127.0.0.1:11434/api/generate',
+      name: 'deepseek-coder-v2:latest',
+      apiUrl: 'http://localhost:11434/api/generate',
       temperature: 0.7,
       topP: 0.9
     },

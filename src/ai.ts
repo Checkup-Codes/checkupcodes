@@ -10,7 +10,16 @@ interface OpenAIResponse {
   }>;
 }
 
+interface OllamaResponse {
+  response: string;
+  model: string;
+  created_at: string;
+  done: boolean;
+}
+
 async function generateWithOllama(prompt: string, modelConfig: ModelConfig): Promise<string> {
+  const isDeepseek = modelConfig.name.includes('deepseek');
+  
   const response = await fetch(modelConfig.apiUrl, {
     method: 'POST',
     headers: {
@@ -19,7 +28,7 @@ async function generateWithOllama(prompt: string, modelConfig: ModelConfig): Pro
     body: JSON.stringify({
       model: modelConfig.name,
       prompt: prompt,
-      stream: true,
+      stream: !isDeepseek, // Disable streaming for deepseek
       options: {
         temperature: modelConfig.temperature,
         top_p: modelConfig.topP
@@ -27,26 +36,37 @@ async function generateWithOllama(prompt: string, modelConfig: ModelConfig): Pro
     }),
   });
 
-  if (!response.ok || !response.body) {
+  if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  let fullMessage = '';
-  for await (const chunk of response.body) {
-    const text = Buffer.isBuffer(chunk) ? chunk.toString('utf-8') : String(chunk);
-    const lines = text.split('\n').filter(Boolean);
-    for (const line of lines) {
-      try {
-        const json = JSON.parse(line);
-        if (json.response) {
-          fullMessage += json.response;
+  if (isDeepseek) {
+    // For deepseek, handle non-streaming response
+    const data = await response.json() as OllamaResponse;
+    return data.response;
+  } else {
+    // For other models, handle streaming response
+    if (!response.body) {
+      throw new Error('No response body received');
+    }
+
+    let fullMessage = '';
+    for await (const chunk of response.body) {
+      const text = Buffer.isBuffer(chunk) ? chunk.toString('utf-8') : String(chunk);
+      const lines = text.split('\n').filter(Boolean);
+      for (const line of lines) {
+        try {
+          const json = JSON.parse(line);
+          if (json.response) {
+            fullMessage += json.response;
+          }
+        } catch (e) {
+          // Ignore parsing errors for incomplete chunks
         }
-      } catch (e) {
-        // Ignore parsing errors for incomplete chunks
       }
     }
+    return fullMessage;
   }
-  return fullMessage;
 }
 
 async function generateWithOpenAI(prompt: string, modelConfig: ModelConfig): Promise<string> {
@@ -94,26 +114,26 @@ export async function generateCommitMessage(status: GitStatus, modelName?: strin
           .map(line => line.substring(1))
           .join('\n');
         
-        return `File: ${file}
-Previous version (HEAD):
-${content.oldContent || 'New file'}
-
-Current version (Staged):
-${content.newContent}
-
-Changes:
-${removedLines ? `Lines Removed:\n${removedLines}` : 'No lines removed'}
-${addedLines ? `\nLines Added:\n${addedLines}` : '\nNo lines added'}`;
+        return `File: ${file}\nChanges:\n${removedLines ? `Removed:\n${removedLines}\n` : ''}${addedLines ? `Added:\n${addedLines}` : ''}`;
       })
-      .join('\n\n---\n\n');
+      .join('\n\n');
 
-    const prompt = `Analyze the following code changes and generate three semantic commit messages.
+    const isDeepseek = modelConfig.name.includes('deepseek');
+    const prompt = isDeepseek ? 
+      `Generate 3 semantic commit messages for these changes:\n${filesInfo}\n\nRules:\n- Use one of: feat/fix/docs/style/refactor/perf/test/chore\n- Format: "type: description"\n- Be specific, no generic messages\n\nRespond with just 3 lines:\n1) type: description\n2) type: description\n3) type: description` :
+      `You are a specialized code review assistant. Analyze the following code changes and generate three semantic commit messages.
 
 Changed Files:
 ${filesInfo}
 
 Instructions:
-1. First, determine ONE of these semantic types that best matches the changes:
+1. First, carefully analyze the code changes:
+   - Look at the actual code modifications, not just file names
+   - Consider the context of the changes
+   - Identify patterns in the modifications
+   - Determine if this is a feature, bug fix, refactor, etc.
+
+2. Then, determine ONE of these semantic types that best matches the changes:
    - feat: New features or significant additions
    - fix: Bug fixes
    - docs: Documentation changes
@@ -123,7 +143,7 @@ Instructions:
    - test: Adding or modifying tests
    - chore: Build process, dependencies, or tooling changes
 
-2. Then generate THREE commit messages that:
+3. Finally, generate THREE commit messages that:
    - All use the SAME semantic type you chose
    - Follow format: type: description
    - Use present tense (e.g., "add" not "added")
@@ -131,6 +151,9 @@ Instructions:
    - Start with lowercase
    - Don't end with period
    - Each highlight different aspects of the changes
+   - Are specific to the code changes, not generic
+
+IMPORTANT: Never return generic messages like "update files". Always be specific about what changed.
 
 Format your response as:
 1) type: description
