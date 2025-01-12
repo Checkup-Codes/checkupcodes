@@ -119,6 +119,19 @@ If you encounter any issues or have questions, please file an issue at [GitHub I
 
 ## Version History
 
+### v0.0.4
+- 🎯 Added new `models` command to list available AI models
+  - Shows all supported AI models with visual indicators
+  - Displays usage examples for model selection
+  - Easy model switching guide
+- 🔧 Improved deepseek-coder integration
+  - Optimized prompt handling for better responses
+  - Enhanced API communication
+  - Streamlined model responses
+- 🚀 Performance improvements
+  - Reduced prompt size for better model compatibility
+  - Optimized response handling for different model types
+
 ### v0.0.3
 - ✨ Enhanced commit analysis with detailed file comparison
   - Added complete diff view between staged and HEAD versions

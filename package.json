@@ -1,6 +1,6 @@
 {
   "name": "checkupcodes",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "AI-powered commit message generator using Ollama",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
