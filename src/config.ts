@@ -34,6 +34,12 @@ const DEFAULT_CONFIG: AIConfig = {
       temperature: 0.7,
       topP: 0.9
     },
+    'deepseek-coder': {
+      name: 'deepseek-coder-v2',
+      apiUrl: 'http://127.0.0.1:11434/api/generate',
+      temperature: 0.7,
+      topP: 0.9
+    },
     openai: {
       name: 'openai',
       apiUrl: 'https://api.openai.com/v1/chat/completions',
