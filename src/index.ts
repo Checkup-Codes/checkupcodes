@@ -5,6 +5,8 @@ import { generateCommitMessage } from './ai.js';
 import { showConfig, setModel } from './commands.js';
 import { getGitStatus, createCommit } from './git.js';
 import { logCommitToFile } from './logger.js';
+import { getAvailableModels } from './config.js';
+import chalk from 'chalk';
 import * as readline from 'readline';
 
 const program = new Command();
@@ -130,6 +132,24 @@ program
   .argument('<model>', 'model name to set as default')
   .action((model) => {
     setModel(model);
+  });
+
+program
+  .command('models')
+  .description('List all available AI models for commit message generation')
+  .action(() => {
+    const models = getAvailableModels();
+    console.log('\nAvailable AI Models:');
+    console.log('------------------');
+    models.forEach(model => {
+      const icon = model === 'openai' ? '🌐' : '🤖';
+      console.log(`${icon} ${chalk.bold(model)}`);
+    });
+    console.log('\nUsage:');
+    console.log('  Set default model:');
+    console.log(`  ${chalk.cyan('cc set-model <model-name>')}`);
+    console.log('\n  Use specific model for one commit:');
+    console.log(`  ${chalk.cyan('cc commit -m <model-name>')}`);
   });
 
 program.parse(); 
