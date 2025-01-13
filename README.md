@@ -119,6 +119,20 @@ If you encounter any issues or have questions, please file an issue at [GitHub I
 
 ## Version History
 
+### v0.0.5
+- 🔄 Enhanced AI response handling
+  - Improved streaming response handling for different AI models
+  - Better error handling with user-friendly messages
+  - Added support for both streaming and non-streaming responses
+- 📊 Enhanced change analysis system
+  - More detailed file change statistics
+  - Better summary generation for complex changes
+  - Improved semantic commit message formatting
+- 🛠️ Technical improvements
+  - Added TypeScript type safety improvements
+  - Better error messages for configuration issues
+  - Enhanced API connection handling
+
 ### v0.0.4
 - 🎯 Added new `models` command to list available AI models
   - Shows all supported AI models with visual indicators
