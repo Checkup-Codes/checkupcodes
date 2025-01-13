@@ -1,5 +1,6 @@
 import { GitStatus, CommitMessage } from './types.js';
 import { getModelConfig, ModelConfig } from './config.js';
+import { getPrompts } from './prompts.js';
 import fetch from 'node-fetch';
 
 interface OpenAIResponse {
@@ -118,47 +119,8 @@ export async function generateCommitMessage(status: GitStatus, modelName?: strin
       })
       .join('\n\n');
 
-    const isDeepseek = modelConfig.name.includes('deepseek');
-    const prompt = isDeepseek ? 
-      `Generate 3 semantic commit messages for these changes:\n${filesInfo}\n\nRules:\n- Use one of: feat/fix/docs/style/refactor/perf/test/chore\n- Format: "type: description"\n- Be specific, no generic messages\n\nRespond with just 3 lines:\n1) type: description\n2) type: description\n3) type: description` :
-      `You are a specialized code review assistant. Analyze the following code changes and generate three semantic commit messages.
-
-Changed Files:
-${filesInfo}
-
-Instructions:
-1. First, carefully analyze the code changes:
-   - Look at the actual code modifications, not just file names
-   - Consider the context of the changes
-   - Identify patterns in the modifications
-   - Determine if this is a feature, bug fix, refactor, etc.
-
-2. Then, determine ONE of these semantic types that best matches the changes:
-   - feat: New features or significant additions
-   - fix: Bug fixes
-   - docs: Documentation changes
-   - style: Code formatting, missing semicolons, etc.
-   - refactor: Code changes that neither fix bugs nor add features
-   - perf: Performance improvements
-   - test: Adding or modifying tests
-   - chore: Build process, dependencies, or tooling changes
-
-3. Finally, generate THREE commit messages that:
-   - All use the SAME semantic type you chose
-   - Follow format: type: description
-   - Use present tense (e.g., "add" not "added")
-   - Are concise (max 50 chars for description)
-   - Start with lowercase
-   - Don't end with period
-   - Each highlight different aspects of the changes
-   - Are specific to the code changes, not generic
-
-IMPORTANT: Never return generic messages like "update files". Always be specific about what changed.
-
-Format your response as:
-1) type: description
-2) type: description
-3) type: description`;
+    const prompts = getPrompts(modelConfig.name);
+    const prompt = prompts.commitMessage.replace('{changes}', filesInfo);
 
     console.log(`Sending request to ${modelConfig.name}...`);
     
