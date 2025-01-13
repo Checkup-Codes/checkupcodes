@@ -23,7 +23,6 @@ program
   .action(async (options) => {
     try {
       const status = await getGitStatus();
-      
       if (status.staged.length === 0) {
         console.error('No staged files found. Please stage some files first using `git add`');
         process.exit(1);
@@ -31,7 +30,7 @@ program
 
       console.log('Analyzing staged files...\n');
       const commitMessage = await generateCommitMessage(status, options.model);
-      
+
       // Display commit message options
       console.log('\nPlease choose a commit message by entering its number (1-3):');
       commitMessage.messages.forEach((msg, index) => {
@@ -53,11 +52,11 @@ program
       if (shouldProceed !== false) {
         let selectedMessage = commitMessage.messages[shouldProceed - 1];
         await logCommitToFile(selectedMessage);
-        
+
         // Show edit option
         console.log('\nSelected commit message:');
         console.log(selectedMessage);
-        
+
         const shouldEdit = await new Promise<boolean>((resolve) => {
           process.stdout.write('\nDo you want to edit this message? (y/N): ');
           process.stdin.once('data', (data) => {
@@ -74,7 +73,7 @@ program
           process.stdout.write('\nEdit commit message\n');
           process.stdout.write('Current message: ' + selectedMessage + '\n');
           process.stdout.write('(Enter your new message or press Enter to keep the current message)\n');
-          
+
           selectedMessage = await new Promise<string>((resolve) => {
             rl.question('New message: ', (answer) => {
               rl.close();
@@ -106,7 +105,7 @@ program
     try {
       const status = await getGitStatus();
       const result = await generateCommitMessage(status, options.model);
-      
+
       console.log('\nGenerated commit messages:');
       result.messages.forEach((msg, i) => {
         console.log(`${i + 1}) ${msg}`);

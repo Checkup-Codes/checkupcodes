@@ -4,11 +4,18 @@ export interface ModelPrompts {
 
 const deepseekPrompts: ModelPrompts = {
   commitMessage: `Generate 3 semantic commit messages for these changes:
+
+Change Statistics:
+{stats}
+
+Detailed Changes:
 {changes}
 
 Rules:
 - Use one of: feat/fix/docs/style/refactor/perf/test/chore
 - Format: "type: description"
+- Focus on the most impactful changes
+- Group similar changes together
 - Be specific, no generic messages
 
 Respond with just 3 lines:
@@ -20,17 +27,20 @@ Respond with just 3 lines:
 const defaultPrompts: ModelPrompts = {
   commitMessage: `You are a specialized code review assistant. Analyze the following code changes and generate three semantic commit messages.
 
-Changed Files:
+Change Statistics:
+{stats}
+
+Detailed Changes:
 {changes}
 
 Instructions:
-1. First, carefully analyze the code changes:
-   - Look at the actual code modifications, not just file names
-   - Consider the context of the changes
-   - Identify patterns in the modifications
-   - Determine if this is a feature, bug fix, refactor, etc.
+1. First, analyze the change statistics and patterns:
+   - Look at the number of files modified/added/deleted
+   - Consider which file types were impacted
+   - Identify the most significant changes by line count
+   - Look for patterns in the changes
 
-2. Then, determine ONE of these semantic types that best matches the changes:
+2. Then, determine ONE of these semantic types that best matches the primary changes:
    - feat: New features or significant additions
    - fix: Bug fixes
    - docs: Documentation changes
@@ -47,7 +57,8 @@ Instructions:
    - Are concise (max 50 chars for description)
    - Start with lowercase
    - Don't end with period
-   - Each highlight different aspects of the changes
+   - Focus on the most significant changes
+   - Group similar changes together
    - Are specific to the code changes, not generic
 
 IMPORTANT: Never return generic messages like "update files". Always be specific about what changed.

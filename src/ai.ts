@@ -18,9 +18,82 @@ interface OllamaResponse {
   done: boolean;
 }
 
+interface FileChange {
+  type: 'add' | 'modify' | 'delete';
+  path: string;
+  extension: string;
+  addedLines: number;
+  removedLines: number;
+  changes: string;
+}
+
+function analyzeChanges(status: GitStatus): {
+  summary: string;
+  stats: {
+    totalFiles: number;
+    addedFiles: number;
+    modifiedFiles: number;
+    deletedFiles: number;
+    impactedExtensions: Set<string>;
+  };
+  changes: FileChange[];
+} {
+  const changes: FileChange[] = [];
+  const stats = {
+    totalFiles: 0,
+    addedFiles: 0,
+    modifiedFiles: 0,
+    deletedFiles: 0,
+    impactedExtensions: new Set<string>()
+  };
+
+  Object.entries(status.files).forEach(([file, content]) => {
+    const diffLines = content.diff.split('\n');
+    const removedLines = diffLines.filter(line => line.startsWith('-'));
+    const addedLines = diffLines.filter(line => line.startsWith('+'));
+    
+    const extension = file.split('.').pop() || '';
+    stats.impactedExtensions.add(extension);
+    
+    let type: 'add' | 'modify' | 'delete' = 'modify';
+    if (removedLines.length === 0 && addedLines.length > 0) {
+      type = 'add';
+      stats.addedFiles++;
+    } else if (removedLines.length > 0 && addedLines.length === 0) {
+      type = 'delete';
+      stats.deletedFiles++;
+    } else {
+      stats.modifiedFiles++;
+    }
+
+    changes.push({
+      type,
+      path: file,
+      extension,
+      addedLines: addedLines.length,
+      removedLines: removedLines.length,
+      changes: `${removedLines.map(line => line.substring(1)).join('\n')}\n${addedLines.map(line => line.substring(1)).join('\n')}`
+    });
+  });
+
+  stats.totalFiles = changes.length;
+
+  // Create a summary focusing on the most significant changes
+  const summary = changes
+    .sort((a, b) => (b.addedLines + b.removedLines) - (a.addedLines + a.removedLines))
+    .map(change => {
+      const impact = change.addedLines + change.removedLines;
+      return `${change.type.toUpperCase()}: ${change.path} (${impact} lines changed)
+${change.changes}`;
+    })
+    .join('\n\n');
+
+  return { summary, stats, changes };
+}
+
 async function generateWithOllama(prompt: string, modelConfig: ModelConfig): Promise<string> {
   const isDeepseek = modelConfig.name.includes('deepseek');
-  
+
   const response = await fetch(modelConfig.apiUrl, {
     method: 'POST',
     headers: {
@@ -102,28 +175,22 @@ export async function generateCommitMessage(status: GitStatus, modelName?: strin
   try {
     const modelConfig = getModelConfig(modelName);
     console.log(`Connecting to ${modelConfig.name} API...`);
+
+    const { summary, stats } = analyzeChanges(status);
     
-    const filesInfo = Object.entries(status.files)
-      .map(([file, content]) => {
-        const diffLines = content.diff.split('\n');
-        const removedLines = diffLines
-          .filter(line => line.startsWith('-'))
-          .map(line => line.substring(1))
-          .join('\n');
-        const addedLines = diffLines
-          .filter(line => line.startsWith('+'))
-          .map(line => line.substring(1))
-          .join('\n');
-        
-        return `File: ${file}\nChanges:\n${removedLines ? `Removed:\n${removedLines}\n` : ''}${addedLines ? `Added:\n${addedLines}` : ''}`;
-      })
-      .join('\n\n');
+    console.group("Change Analysis");
+    console.log(`Total Files: ${stats.totalFiles}`);
+    console.log(`Added: ${stats.addedFiles}, Modified: ${stats.modifiedFiles}, Deleted: ${stats.deletedFiles}`);
+    console.log(`File Types: ${Array.from(stats.impactedExtensions).join(', ')}`);
+    console.groupEnd();
 
     const prompts = getPrompts(modelConfig.name);
-    const prompt = prompts.commitMessage.replace('{changes}', filesInfo);
+    const prompt = prompts.commitMessage
+      .replace('{changes}', summary)
+      .replace('{stats}', JSON.stringify(stats, null, 2));
 
     console.log(`Sending request to ${modelConfig.name}...`);
-    
+
     let fullMessage: string;
     if (modelConfig.name === 'openai') {
       fullMessage = await generateWithOpenAI(prompt, modelConfig);
